@@ -18,7 +18,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-2004:202111-02
     strategy:
       matrix:
         include:
@@ -28,6 +28,7 @@ jobs:
             command: make clean && CRASH_TEST_EXT_ARGS=" --duration=500" make blackbox_asan_crash_test && echo $? || echo $?
           - mame: white-box
             command: make clean && CRASH_TEST_EXT_ARGS="--duration=500" make whitebox_asan_crash_test && echo $? || echo $?
+    
     steps:
     
       - name: Pre
