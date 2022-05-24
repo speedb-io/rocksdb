@@ -12,8 +12,7 @@ jobs:
         fetch-depth: 0
 
     - name: Fetch from upstream
-      run: |
-        git remote add upstream https://github.com/facebook/rocksdb.git && git fetch upstream
+      uses: actions/checkout@v2.4.2
 
     - name: Where am I
       run: |
