@@ -75,4 +75,5 @@ jobs:
         ninja
         
   sanity:
+    needs: [build]
     uses: speedb-io/rocksdb/.github/workflows/sanity_check.yml@main
