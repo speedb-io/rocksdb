@@ -74,6 +74,5 @@ jobs:
         -DWITH_TESTS=1 -DWITH_ALL_TESTS=1 -DWITH_EXAMPLES=1
         ninja
         
-          
-    - name: sanity
-      uses: speedb-io/rocksdb/.github/workflows/sanity_check.yml@main
+  sanity:
+    uses: speedb-io/rocksdb/.github/workflows/sanity_check.yml@main
