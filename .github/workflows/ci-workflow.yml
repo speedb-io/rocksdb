@@ -43,7 +43,6 @@ jobs:
         key: ${{runner.os}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
         restore-keys: |
           ${{runner.os}}-ccache-
-          
         
       
     - name: ${{ matrix.name }}
@@ -76,7 +75,5 @@ jobs:
         ninja
         
           
-          
     - name: sanity
       uses: speedb-io/rocksdb/.github/workflows/sanity_check.yml@main
-  
