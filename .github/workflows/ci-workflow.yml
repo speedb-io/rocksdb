@@ -77,6 +77,6 @@ jobs:
         
           
           
-    - name: Test
-      run: |
-        echo "~~~~ Running Tests ~~~~"
+    - name: sanity
+      uses: speedb-io/rocksdb/.github/workflows/sanity_check.yml@main
+  
