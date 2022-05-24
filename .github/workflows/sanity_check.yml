@@ -1,6 +1,5 @@
 name: Check buck targets and code format
-on: |
-  [push, pull_request]
+on: 
   workflow_call:
 jobs:
   check:
