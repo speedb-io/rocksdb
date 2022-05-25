@@ -31,15 +31,15 @@ jobs:
     
     steps:
     
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Pre
         run: |
           sudo apt-get update -y && sudo apt-get install -y parallel g++ libgflags-dev software-properties-common golang-go gccgo lz4 binutils liblz4-dev libsnappy1v5 mlocate sysstat nvme-cli python3 python3-pip nodejs npm liblz4-dev libsnappy-dev libzstd-dev gdb dstat unzip apt-transport-https ca-certificates curl gnupg lsb-release
           sudo mv /usr/bin/parallel /usr/bin/gnu_parallel
           sudo rm /etc/parallel/config
           sudo apt-get install moreutils
-
-      - name: Checkout
-        uses: actions/checkout@v3
 
       - name: ${{ matrix.name }}
         run:  ${{ matrix.command }}
