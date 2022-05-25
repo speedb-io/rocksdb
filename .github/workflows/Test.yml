@@ -29,7 +29,7 @@ jobs:
           - mame: white-box
             command: make clean && CRASH_TEST_EXT_ARGS="--duration=500" make whitebox_asan_crash_test && echo $? || echo $?
     container:
-      image: ubuntu-2004:202111-02
+      image: ubuntu:20.04
     
     steps:
     
