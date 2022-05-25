@@ -28,8 +28,6 @@ jobs:
             command: make clean && CRASH_TEST_EXT_ARGS=" --duration=500" make blackbox_asan_crash_test && echo $? || echo $?
           - mame: white-box
             command: make clean && CRASH_TEST_EXT_ARGS="--duration=500" make whitebox_asan_crash_test && echo $? || echo $?
-    container:
-      image: ubuntu:20.04
     
     steps:
     
@@ -38,7 +36,7 @@ jobs:
 
       - name: Pre
         run: |
-          apt-get update -y && sudo apt-get install -y parallel g++ libgflags-dev software-properties-common golang-go gccgo binutils liblz4-dev libsnappy1v5 mlocate sysstat nvme-cli python3 python3-pip nodejs npm liblz4-dev libsnappy-dev libzstd-dev gdb dstat unzip apt-transport-https ca-certificates curl gnupg lsb-release || echo ""
+          sudo apt-get update -y && sudo apt-get install -y parallel g++ libgflags-dev software-properties-common golang-go gccgo binutils liblz4-dev libsnappy1v5 mlocate sysstat nvme-cli python3 python3-pip nodejs npm liblz4-dev libsnappy-dev libzstd-dev gdb dstat unzip apt-transport-https ca-certificates curl gnupg lsb-release || echo ""
           sudo mv /usr/bin/parallel /usr/bin/gnu_parallel
           sudo rm -rf /etc/parallel/config || echo ""
           sudo apt-get install moreutils
