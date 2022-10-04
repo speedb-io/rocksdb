@@ -372,17 +372,17 @@ Status ReadFooterFromFile(const IOOptions& opts, RandomAccessFileReader* file,
   // TODO: rate limit footer reads.
   if (prefetch_buffer == nullptr ||
       !prefetch_buffer->TryReadFromCache(
-          IOOptions(), file, read_offset, Footer::kMaxEncodedLength,
-          &footer_input, nullptr, Env::IO_TOTAL /* rate_limiter_priority */)) {
+          opts, file, read_offset, Footer::kMaxEncodedLength, &footer_input,
+          nullptr, opts.rate_limiter_priority)) {
     if (file->use_direct_io()) {
       s = file->Read(opts, read_offset, Footer::kMaxEncodedLength,
                      &footer_input, nullptr, &internal_buf,
-                     Env::IO_TOTAL /* rate_limiter_priority */);
+                     opts.rate_limiter_priority);
     } else {
       footer_buf.reserve(Footer::kMaxEncodedLength);
       s = file->Read(opts, read_offset, Footer::kMaxEncodedLength,
                      &footer_input, &footer_buf[0], nullptr,
-                     Env::IO_TOTAL /* rate_limiter_priority */);
+                     opts.rate_limiter_priority);
     }
     if (!s.ok()) return s;
   }
@@ -390,6 +390,10 @@ Status ReadFooterFromFile(const IOOptions& opts, RandomAccessFileReader* file,
   // Check that we actually read the whole footer from the file. It may be
   // that size isn't correct.
   if (footer_input.size() < Footer::kMinEncodedLength) {
+    // FIXME: this error message is bad. We should be checking whether the
+    // provided file_size matches what's on disk, at least in this case.
+    // Unfortunately FileSystem/Env does not provide a way to get the size
+    // of an open file, so getting file size requires a full path seek.
     return Status::Corruption("file is too short (" +
                               std::to_string(file_size) +
                               " bytes) to be an "
@@ -494,10 +498,11 @@ uint32_t ComputeBuiltinChecksumWithLastByte(ChecksumType type, const char* data,
   }
 }
 
-Status UncompressBlockContentsForCompressionType(
-    const UncompressionInfo& uncompression_info, const char* data, size_t n,
-    BlockContents* contents, uint32_t format_version,
-    const ImmutableOptions& ioptions, MemoryAllocator* allocator) {
+Status UncompressBlockData(const UncompressionInfo& uncompression_info,
+                           const char* data, size_t size,
+                           BlockContents* out_contents, uint32_t format_version,
+                           const ImmutableOptions& ioptions,
+                           MemoryAllocator* allocator) {
   Status ret = Status::OK();
 
   assert(uncompression_info.type() != kNoCompression &&
@@ -507,7 +512,7 @@ Status UncompressBlockContentsForCompressionType(
                       ShouldReportDetailedTime(ioptions.env, ioptions.stats));
   size_t uncompressed_size = 0;
   CacheAllocationPtr ubuf =
-      UncompressData(uncompression_info, data, n, &uncompressed_size,
+      UncompressData(uncompression_info, data, size, &uncompressed_size,
                      GetCompressFormatForVersion(format_version), allocator);
   if (!ubuf) {
     if (!CompressionTypeSupported(uncompression_info.type())) {
@@ -521,44 +526,36 @@ Status UncompressBlockContentsForCompressionType(
     }
   }
 
-  *contents = BlockContents(std::move(ubuf), uncompressed_size);
+  *out_contents = BlockContents(std::move(ubuf), uncompressed_size);
 
   if (ShouldReportDetailedTime(ioptions.env, ioptions.stats)) {
     RecordTimeToHistogram(ioptions.stats, DECOMPRESSION_TIMES_NANOS,
                           timer.ElapsedNanos());
   }
   RecordTimeToHistogram(ioptions.stats, BYTES_DECOMPRESSED,
-                        contents->data.size());
+                        out_contents->data.size());
   RecordTick(ioptions.stats, NUMBER_BLOCK_DECOMPRESSED);
 
+  TEST_SYNC_POINT_CALLBACK("UncompressBlockData:TamperWithReturnValue",
+                           static_cast<void*>(&ret));
   TEST_SYNC_POINT_CALLBACK(
-      "UncompressBlockContentsForCompressionType:TamperWithReturnValue",
-      static_cast<void*>(&ret));
-  TEST_SYNC_POINT_CALLBACK(
-      "UncompressBlockContentsForCompressionType:"
+      "UncompressBlockData:"
       "TamperWithDecompressionOutput",
-      static_cast<void*>(contents));
+      static_cast<void*>(out_contents));
 
   return ret;
 }
 
-//
-// The 'data' points to the raw block contents that was read in from file.
-// This method allocates a new heap buffer and the raw block
-// contents are uncompresed into this buffer. This
-// buffer is returned via 'result' and it is upto the caller to
-// free this buffer.
-// format_version is the block format as defined in include/rocksdb/table.h
-Status UncompressBlockContents(const UncompressionInfo& uncompression_info,
-                               const char* data, size_t n,
-                               BlockContents* contents, uint32_t format_version,
-                               const ImmutableOptions& ioptions,
-                               MemoryAllocator* allocator) {
-  assert(data[n] != kNoCompression);
-  assert(data[n] == static_cast<char>(uncompression_info.type()));
-  return UncompressBlockContentsForCompressionType(uncompression_info, data, n,
-                                                   contents, format_version,
-                                                   ioptions, allocator);
+Status UncompressSerializedBlock(const UncompressionInfo& uncompression_info,
+                                 const char* data, size_t size,
+                                 BlockContents* out_contents,
+                                 uint32_t format_version,
+                                 const ImmutableOptions& ioptions,
+                                 MemoryAllocator* allocator) {
+  assert(data[size] != kNoCompression);
+  assert(data[size] == static_cast<char>(uncompression_info.type()));
+  return UncompressBlockData(uncompression_info, data, size, out_contents,
+                             format_version, ioptions, allocator);
 }
 
 // Replace the contents of db_host_id with the actual hostname, if db_host_id
